@@ -1,0 +1,70 @@
+rabbitmq
+rabbitMQ基本概念:
+RabbitMQ是一个开源的AMQP实现，服务器端用Erlang语言编写，支持多种客户端，如：Python、Ruby、.NET、Java、JMS、C、PHP、ActionScript、XMPP、STOMP等，支持AJAX。用于在分布式系统中存储转发消息，在易用性、扩展性、高可用性等方面表现不俗。
+AMQP
+AMQP：即Advanced Message Queuing Protocol，高级消息队列协议，是应用层协议的一个开放标准，为面向消息的中间件设计。消息中间件主要用于组件之间的解耦，消息的发送者无需知道消息使用者的存在，反之亦然。AMQP的主要特征是面向消息、队列、路由（包括点对点和发布/订阅）、可靠性、安全。
+简单介绍AMQP的协议栈，AMQP协议本身包含三层，如下：
+1.Model Layer
+位于协议最高层，主要定义了一些供客户端调用的命令，客户端可以通过这些命令实现自己的业务逻辑，例如，客户端可以通过queue declare声明一个队列，利用consume命令获取队列的消息。
+2.Session Layer
+主要负责将客户端命令发送给服务器，在将服务器端的应答返回给客户端，主要为客户端与服务器之间通信提供可靠性、同步机制和错误处理
+3.Transport Layer
+主要传输二进制数据流，提供帧的处理、信道复用、错误检测和数据表示。
+
+Exchange
+在之前我们看到生产者将消息投递到Queue中，实际上这在RabbitMQ中这种事情永远都不会发生。实际的情况是，生产者将消息发送到Exchange（交换器），由Exchange将消息路由到一个或多个Queue中（或者丢弃）。
+routing key
+生产者在将消息发送给Exchange的时候，一般会指定一个routing key，来指定这个消息的路由规则，而这个routing key需要与Exchange Type及binding key联合使用才能最终生效。在Exchange Type与binding key固定的情况下（在正常使用时一般这些内容都是固定配置好的），我们的生产者就可以在发送消息给Exchange时，通过指定routing key来决定消息流向哪里。
+RabbitMQ为routing key设定的长度限制为255 bytes。
+RabbitMQ
+RabbitMQ中的交换机包含4种类型
+Direct Exchange（直连交换机）、
+Topic Exchange（通配符交换机）、
+Fanout Exchange（广播式交换机）、
+Headers交换机
+ 
+fanout：fanout类型的Exchange路由规则非常简单，它会把所有发送到该Exchange的消息路由到所有与它绑定的Queue中
+  就是我们熟悉的广播模式或者订阅模式，给Fanout转发器发送消息，绑定了这个转发器的所有队列都收到这个消息。
+  
+direct：direct类型的Exchange路由规则也很简单，它会把消息路由到那些binding key与routing key完全匹配的Queue中
+
+topic：模糊匹配routingKey
+
+Headers：
+
+Spring AMQP提供了一个发送和接收消息的操作模板类AmqpTemplate
+
+
+生產者发送一个消息到队列的步骤：
+1.写一个配置类 加上注解@Configuration=配置类 ，内容如下：
+ /**
+     * 声明一个名为topic.message1的队列
+     */
+    @Bean
+    public Queue topicQueue() {
+        return new Queue("topic.message1");
+    }
+ /**
+     * 声明一个名为exchange的交换机
+     */
+    @Bean
+    public TopicExchange exchange() {
+        return new TopicExchange("exchange");
+    }
+ /**
+     * 将topic.message1的队列绑定到exchange交换机
+     */
+    @Bean
+    public Binding bindtopicMessage1() {
+        return BindingBuilder.bind(topicQueue()).to(exchange()).with("topic.message1");
+    }
+
+//2.发出消息到队列
+   @Autowired
+    private AmqpTemplate rabbitTemplate;
+使用AmqpTemplate 的方法convertAndSend，指定exchange，队列，消息
+ this.rabbitTemplate.convertAndSend("exchange", "topic.message1", message1);
+
+
+消费端：
+使用注解：利用注解@RabbitListener实现异步接受消息，監聽隊列
